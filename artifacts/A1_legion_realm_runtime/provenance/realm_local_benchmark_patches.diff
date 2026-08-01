@@ -1,0 +1,478 @@
+diff --git a/src/realm/deppart/byfield_gpu_impl.hpp b/src/realm/deppart/byfield_gpu_impl.hpp
+index da14fcf63..cef8c0325 100644
+--- a/src/realm/deppart/byfield_gpu_impl.hpp
++++ b/src/realm/deppart/byfield_gpu_impl.hpp
+@@ -38,6 +38,7 @@ void GPUByFieldMicroOp<N,T,FT>::execute()
+   NVTX_DEPPART(byfield_gpu);
+ 
+   CUstream stream = this->stream->get_stream();
++  const int coord_end_bit = coord_radix_bits_for_nonnegative_bounds(parent_space.bounds);
+ 
+   collapsed_space<N, T> inst_space;
+ 
+@@ -177,7 +178,7 @@ void GPUByFieldMicroOp<N,T,FT>::execute()
+         /* getMap: */         [&](auto const& kv){
+                               // return the SparsityMap key itself
+                               return kv.second;
+-                           });
++                           }, coord_end_bit);
+ 
+       if (host_fallback) {
+         this->split_output(d_new_rects, num_new_rects, host_rect_buffers, rect_counts, buffer_arena);
+@@ -211,7 +212,7 @@ void GPUByFieldMicroOp<N,T,FT>::execute()
+       /* getMap: */         [&](auto const& kv){
+                             // return the SparsityMap key itself
+                             return kv.second;
+-                         });
++                         }, coord_end_bit);
+       num_completed += curr_tile;
+       num_output = num_final_rects;
+       subtract_const<<<COMPUTE_GRID(field_data.size()), THREADS_PER_BLOCK, 0, stream>>>(inst_space.offsets, field_data.size()+1, curr_tile);
+diff --git a/src/realm/deppart/image_gpu_impl.hpp b/src/realm/deppart/image_gpu_impl.hpp
+index 8fccd2cca..94b15db14 100644
+--- a/src/realm/deppart/image_gpu_impl.hpp
++++ b/src/realm/deppart/image_gpu_impl.hpp
+@@ -1,4 +1,5 @@
+ #pragma once
++#include <cstdio>
+ #include "realm/deppart/image.h"
+ #include "realm/deppart/image_gpu_kernels.hpp"
+ #include "realm/deppart/partitions_gpu_impl.hpp"
+@@ -487,6 +488,8 @@ void GPUImageMicroOp<N,T,N2,T2>::gpu_populate_rngs()
+     RectDesc<N, T>* output_start = nullptr;
+     size_t num_completed = 0;
+     size_t curr_tile = tile_size / 2;
++    size_t tile_count = 0;
++    size_t oom_backoffs = 0;
+     int count = 0;
+     if (count) {}
+     bool host_fallback = false;
+@@ -511,6 +514,7 @@ void GPUImageMicroOp<N,T,N2,T2>::gpu_populate_rngs()
+         GPUMicroOp<N2, T2>::template construct_input_rectlist<RectDesc<N2, T2>>(inst_space_tile, src_space, d_valid_rects, num_valid_rects, d_inst_counters, d_inst_prefix, buffer_arena, stream);
+ 
+         if (num_valid_rects == 0) {
++          tile_count++;
+           num_completed += curr_tile;
+           subtract_const<<<COMPUTE_GRID(domain_transform.range_data.size()), THREADS_PER_BLOCK, 0, stream>>>(inst_space.offsets, domain_transform.range_data.size()+1, curr_tile);
+           KERNEL_CHECK(stream);
+@@ -598,6 +602,7 @@ void GPUImageMicroOp<N,T,N2,T2>::gpu_populate_rngs()
+           buffer_arena.flip_parity();
+ 
+         if (num_valid_output == 0) {
++          tile_count++;
+           num_completed += curr_tile;
+           subtract_const<<<COMPUTE_GRID(domain_transform.range_data.size()), THREADS_PER_BLOCK, 0, stream>>>(inst_space.offsets, domain_transform.range_data.size()+1, curr_tile);
+           KERNEL_CHECK(stream);
+@@ -631,7 +636,8 @@ void GPUImageMicroOp<N,T,N2,T2>::gpu_populate_rngs()
+ 
+             //We need to place the new output at the rightmost end of the buffer
+             num_output = num_new_rects;
+-            num_completed += curr_tile;
++            tile_count++;
++          num_completed += curr_tile;
+             output_start = d_new_rects;
+             subtract_const<<<COMPUTE_GRID(domain_transform.range_data.size()), THREADS_PER_BLOCK, 0, stream>>>(inst_space.offsets, domain_transform.range_data.size()+1, curr_tile);
+             KERNEL_CHECK(stream);
+@@ -659,6 +665,7 @@ void GPUImageMicroOp<N,T,N2,T2>::gpu_populate_rngs()
+                                 // return the SparsityMap key itself
+                                 return elem;
+                              }, coord_end_bit);
++          tile_count++;
+           num_completed += curr_tile;
+           num_output = num_final_rects;
+           subtract_const<<<COMPUTE_GRID(domain_transform.range_data.size()), THREADS_PER_BLOCK, 0, stream>>>(inst_space.offsets, domain_transform.range_data.size()+1, curr_tile);
+@@ -667,6 +674,7 @@ void GPUImageMicroOp<N,T,N2,T2>::gpu_populate_rngs()
+           CUDA_CHECK(cudaStreamSynchronize(stream), stream);
+       }
+       catch (arena_oom&) {
++        oom_backoffs++;
+         //std::cout << "Caught arena_oom, reducing tile size from " << curr_tile << " to " << curr_tile / 2 << std::endl;
+         curr_tile /= 2;
+         if (curr_tile == 0) {
+@@ -684,7 +692,13 @@ void GPUImageMicroOp<N,T,N2,T2>::gpu_populate_rngs()
+       }
+   }
+ 
++    auto print_tile_stats = [&]() {
++      printf("TILE,op=image,path=ranges,d1=%d,d2=%d,gpu_tiles=%zu,gpu_oom_backoffs=%zu,gpu_host_fallback=%d,gpu_input_rects=%zu,gpu_scratch_bytes=%zu\n",
++             N, N2, tile_count, oom_backoffs, host_fallback ? 1 : 0,
++             inst_space.num_rects, tile_size);
++    };
+   if (num_output == 0) {
++      print_tile_stats();
+     for (SparsityMap<N, T> it : sparsity_outputs) {
+       SparsityMapImpl<N, T> *impl = SparsityMapImpl<N, T>::lookup(it);
+       if (this->exclusive) {
+@@ -708,6 +722,7 @@ void GPUImageMicroOp<N,T,N2,T2>::gpu_populate_rngs()
+                             return elem;
+                          });
+     } catch (arena_oom&) {
++        oom_backoffs++;
+       this->split_output(output_start, num_output, host_rect_buffers, rect_counts, buffer_arena);
+       host_fallback = true;
+     }
+@@ -729,6 +744,7 @@ void GPUImageMicroOp<N,T,N2,T2>::gpu_populate_rngs()
+     }
+   }
+ 
++    print_tile_stats();
+ }
+ 
+   /*
+@@ -813,6 +829,8 @@ void GPUImageMicroOp<N,T,N2,T2>::gpu_populate_ptrs()
+     RectDesc<N, T>* output_start = nullptr;
+     size_t num_completed = 0;
+     size_t curr_tile = tile_size / 2;
++    size_t tile_count = 0;
++    size_t oom_backoffs = 0;
+     int count = 0;
+     if (count) {}
+     bool host_fallback = false;
+@@ -835,6 +853,7 @@ void GPUImageMicroOp<N,T,N2,T2>::gpu_populate_ptrs()
+         GPUMicroOp<N2, T2>::template construct_input_rectlist<RectDesc<N2, T2>>(inst_space_tile, src_space, d_valid_rects, num_valid_rects, d_inst_counters, d_inst_prefix, buffer_arena, stream);
+ 
+         if (num_valid_rects == 0) {
++          tile_count++;
+           num_completed += curr_tile;
+           subtract_const<<<COMPUTE_GRID(domain_transform.ptr_data.size()), THREADS_PER_BLOCK, 0, stream>>>(inst_space.offsets, domain_transform.ptr_data.size()+1, curr_tile);
+           KERNEL_CHECK(stream);
+@@ -892,6 +911,7 @@ void GPUImageMicroOp<N,T,N2,T2>::gpu_populate_ptrs()
+         }
+ 
+         if (num_valid_points == 0) {
++          tile_count++;
+           num_completed += curr_tile;
+           subtract_const<<<COMPUTE_GRID(domain_transform.ptr_data.size()), THREADS_PER_BLOCK, 0, stream>>>(inst_space.offsets, domain_transform.ptr_data.size()+1, curr_tile);
+           KERNEL_CHECK(stream);
+@@ -939,6 +959,7 @@ void GPUImageMicroOp<N,T,N2,T2>::gpu_populate_ptrs()
+ 
+         if (num_output==0 || host_fallback) {
+           num_output = num_new_rects;
++          tile_count++;
+           num_completed += curr_tile;
+           output_start = d_new_rects;
+           subtract_const<<<COMPUTE_GRID(domain_transform.ptr_data.size()), THREADS_PER_BLOCK, 0, stream>>>(inst_space.offsets, domain_transform.ptr_data.size()+1, curr_tile);
+@@ -966,7 +987,8 @@ void GPUImageMicroOp<N,T,N2,T2>::gpu_populate_ptrs()
+                               // return the SparsityMap key itself
+                               return elem;
+                            }, coord_end_bit);
+-        num_completed += curr_tile;
++        tile_count++;
++          num_completed += curr_tile;
+         num_output = num_final_rects;
+         subtract_const<<<COMPUTE_GRID(domain_transform.ptr_data.size()), THREADS_PER_BLOCK, 0, stream>>>(inst_space.offsets, domain_transform.ptr_data.size()+1, curr_tile);
+         KERNEL_CHECK(stream);
+@@ -974,6 +996,7 @@ void GPUImageMicroOp<N,T,N2,T2>::gpu_populate_ptrs()
+         CUDA_CHECK(cudaStreamSynchronize(stream), stream);
+       }
+       catch (arena_oom&) {
++        oom_backoffs++;
+         //std::cout << "Caught arena_oom, reducing tile size from " << curr_tile << " to " << curr_tile / 2 << std::endl;
+         curr_tile /= 2;
+         if (curr_tile == 0) {
+@@ -991,7 +1014,13 @@ void GPUImageMicroOp<N,T,N2,T2>::gpu_populate_ptrs()
+       }
+     }
+ 
++    auto print_tile_stats = [&]() {
++      printf("TILE,op=image,path=ptrs,d1=%d,d2=%d,gpu_tiles=%zu,gpu_oom_backoffs=%zu,gpu_host_fallback=%d,gpu_input_rects=%zu,gpu_scratch_bytes=%zu\n",
++             N, N2, tile_count, oom_backoffs, host_fallback ? 1 : 0,
++             inst_space.num_rects, tile_size);
++    };
+     if (num_output == 0) {
++      print_tile_stats();
+       for (SparsityMap<N, T> it : sparsity_outputs) {
+         SparsityMapImpl<N, T> *impl = SparsityMapImpl<N, T>::lookup(it);
+         if (this->exclusive) {
+@@ -1015,6 +1044,7 @@ void GPUImageMicroOp<N,T,N2,T2>::gpu_populate_ptrs()
+                             return elem;
+                          });
+     } catch (arena_oom&) {
++        oom_backoffs++;
+       this->split_output(output_start, num_output, host_rect_buffers, rect_counts, buffer_arena);
+       host_fallback = true;
+     }
+@@ -1035,5 +1065,6 @@ void GPUImageMicroOp<N,T,N2,T2>::gpu_populate_ptrs()
+       }
+     }
+   }
++    print_tile_stats();
+ }
+ }
+diff --git a/src/realm/deppart/preimage_gpu_impl.hpp b/src/realm/deppart/preimage_gpu_impl.hpp
+index 9f48937ab..854f2d8dd 100644
+--- a/src/realm/deppart/preimage_gpu_impl.hpp
++++ b/src/realm/deppart/preimage_gpu_impl.hpp
+@@ -1,4 +1,5 @@
+ #pragma once
++#include <cstdio>
+ #include "realm/deppart/preimage.h"
+ #include "realm/deppart/preimage_gpu_kernels.hpp"
+ #include "realm/deppart/byfield_gpu_kernels.hpp"
+@@ -78,6 +79,8 @@ namespace Realm {
+     RectDesc<N, T>* output_start = nullptr;
+     size_t num_completed = 0;
+     size_t curr_tile = tile_size / 2;
++    size_t tile_count = 0;
++    size_t oom_backoffs = 0;
+     int count = 0;
+     if (count) {}
+     bool host_fallback = false;
+@@ -103,6 +106,7 @@ namespace Realm {
+         GPUMicroOp<N, T>::template construct_input_rectlist<Rect<N, T>>(inst_space_tile, collapsed_parent, d_valid_rects, num_valid_rects, d_inst_counters, d_inst_prefix, buffer_arena, stream);
+ 
+         if (num_valid_rects == 0) {
++          tile_count++;
+           num_completed += curr_tile;
+           subtract_const<<<COMPUTE_GRID(domain_transform.range_data.size()), THREADS_PER_BLOCK, 0, stream>>>(inst_space.offsets, domain_transform.range_data.size()+1, curr_tile);
+           KERNEL_CHECK(stream);
+@@ -141,7 +145,8 @@ namespace Realm {
+           num_valid_points = h_target_counters[targets.size()];
+ 
+           if (num_valid_points == 0) {
+-            num_completed += curr_tile;
++            tile_count++;
++          num_completed += curr_tile;
+             subtract_const<<<COMPUTE_GRID(domain_transform.range_data.size()), THREADS_PER_BLOCK, 0, stream>>>(inst_space.offsets, domain_transform.range_data.size()+1, curr_tile);
+             KERNEL_CHECK(stream);
+             CUDA_CHECK(cudaStreamSynchronize(stream), stream);
+@@ -176,7 +181,8 @@ namespace Realm {
+           num_valid_points = h_target_counters[targets.size()];
+ 
+           if (num_valid_points == 0) {
+-            num_completed += curr_tile;
++            tile_count++;
++          num_completed += curr_tile;
+             subtract_const<<<COMPUTE_GRID(domain_transform.range_data.size()), THREADS_PER_BLOCK, 0, stream>>>(inst_space.offsets, domain_transform.range_data.size()+1, curr_tile);
+             KERNEL_CHECK(stream);
+             CUDA_CHECK(cudaStreamSynchronize(stream), stream);
+@@ -222,6 +228,7 @@ namespace Realm {
+ 
+         if (num_output==0 || host_fallback) {
+           num_output = num_new_rects;
++          tile_count++;
+           num_completed += curr_tile;
+           output_start = d_new_rects;
+           subtract_const<<<COMPUTE_GRID(domain_transform.range_data.size()), THREADS_PER_BLOCK, 0, stream>>>(inst_space.offsets, domain_transform.range_data.size()+1, curr_tile);
+@@ -249,7 +256,8 @@ namespace Realm {
+                               // return the SparsityMap key itself
+                               return elem;
+                            });
+-        num_completed += curr_tile;
++        tile_count++;
++          num_completed += curr_tile;
+         num_output = num_final_rects;
+         subtract_const<<<COMPUTE_GRID(domain_transform.range_data.size()), THREADS_PER_BLOCK, 0, stream>>>(inst_space.offsets, domain_transform.range_data.size()+1, curr_tile);
+         KERNEL_CHECK(stream);
+@@ -257,6 +265,7 @@ namespace Realm {
+         CUDA_CHECK(cudaStreamSynchronize(stream), stream);
+ 
+       } catch (arena_oom&) {
++        oom_backoffs++;
+         //std::cout << "Caught arena_oom, reducing tile size from " << curr_tile << " to " << curr_tile / 2 << std::endl;
+         curr_tile /= 2;
+         if (curr_tile == 0) {
+@@ -273,7 +282,13 @@ namespace Realm {
+         }
+       }
+     }
++    auto print_tile_stats = [&]() {
++      printf("TILE,op=preimage,path=ranges,d1=%d,d2=%d,gpu_tiles=%zu,gpu_oom_backoffs=%zu,gpu_host_fallback=%d,gpu_input_rects=%zu,gpu_scratch_bytes=%zu\n",
++             N, N2, tile_count, oom_backoffs, host_fallback ? 1 : 0,
++             inst_space.num_rects, tile_size);
++    };
+     if (num_output == 0) {
++      print_tile_stats();
+       for (SparsityMap<N, T> it : sparsity_outputs) {
+         SparsityMapImpl<N, T> *impl = SparsityMapImpl<N, T>::lookup(it);
+         if (this->exclusive) {
+@@ -297,6 +312,7 @@ namespace Realm {
+                               return elem;
+                            });
+       } catch (arena_oom&) {
++        oom_backoffs++;
+         this->split_output(output_start, num_output, host_rect_buffers, rect_counts, buffer_arena);
+         host_fallback = true;
+       }
+@@ -317,7 +333,8 @@ namespace Realm {
+         }
+       }
+     }
+-  }
++      print_tile_stats();
++}
+ 
+   template<int N, typename T, int N2, typename T2>
+   void GPUPreimageMicroOp<N, T, N2, T2>::gpu_populate_bitmasks() {
+@@ -388,6 +405,8 @@ namespace Realm {
+     RectDesc<N, T>* output_start = nullptr;
+     size_t num_completed = 0;
+     size_t curr_tile = tile_size / 2;
++    size_t tile_count = 0;
++    size_t oom_backoffs = 0;
+     int count = 0;
+     if (count) {}
+     bool host_fallback = false;
+@@ -413,6 +432,7 @@ namespace Realm {
+         GPUMicroOp<N, T>::template construct_input_rectlist<Rect<N, T>>(inst_space_tile, collapsed_parent, d_valid_rects, num_valid_rects, d_inst_counters, d_inst_prefix, buffer_arena, stream);
+ 
+         if (num_valid_rects == 0) {
++          tile_count++;
+           num_completed += curr_tile;
+           subtract_const<<<COMPUTE_GRID(domain_transform.ptr_data.size()), THREADS_PER_BLOCK, 0, stream>>>(inst_space.offsets, domain_transform.ptr_data.size()+1, curr_tile);
+           KERNEL_CHECK(stream);
+@@ -451,7 +471,8 @@ namespace Realm {
+           num_valid_points = h_target_counters[targets.size()];
+ 
+           if (num_valid_points == 0) {
+-            num_completed += curr_tile;
++            tile_count++;
++          num_completed += curr_tile;
+             subtract_const<<<COMPUTE_GRID(domain_transform.ptr_data.size()), THREADS_PER_BLOCK, 0, stream>>>(inst_space.offsets, domain_transform.ptr_data.size()+1, curr_tile);
+             KERNEL_CHECK(stream);
+             CUDA_CHECK(cudaStreamSynchronize(stream), stream);
+@@ -486,7 +507,8 @@ namespace Realm {
+           num_valid_points = h_target_counters[targets.size()];
+ 
+           if (num_valid_points == 0) {
+-            num_completed += curr_tile;
++            tile_count++;
++          num_completed += curr_tile;
+             subtract_const<<<COMPUTE_GRID(domain_transform.ptr_data.size()), THREADS_PER_BLOCK, 0, stream>>>(inst_space.offsets, domain_transform.ptr_data.size()+1, curr_tile);
+             KERNEL_CHECK(stream);
+             CUDA_CHECK(cudaStreamSynchronize(stream), stream);
+@@ -532,6 +554,7 @@ namespace Realm {
+ 
+         if (num_output==0 || host_fallback) {
+           num_output = num_new_rects;
++          tile_count++;
+           num_completed += curr_tile;
+           output_start = d_new_rects;
+           subtract_const<<<COMPUTE_GRID(domain_transform.ptr_data.size()), THREADS_PER_BLOCK, 0, stream>>>(inst_space.offsets, domain_transform.ptr_data.size()+1, curr_tile);
+@@ -559,7 +582,8 @@ namespace Realm {
+                               // return the SparsityMap key itself
+                               return elem;
+                            });
+-        num_completed += curr_tile;
++        tile_count++;
++          num_completed += curr_tile;
+         num_output = num_final_rects;
+         subtract_const<<<COMPUTE_GRID(domain_transform.ptr_data.size()), THREADS_PER_BLOCK, 0, stream>>>(inst_space.offsets, domain_transform.ptr_data.size()+1, curr_tile);
+         KERNEL_CHECK(stream);
+@@ -567,6 +591,7 @@ namespace Realm {
+         CUDA_CHECK(cudaStreamSynchronize(stream), stream);
+ 
+       } catch (arena_oom&) {
++        oom_backoffs++;
+         //std::cout << "Caught arena_oom, reducing tile size from " << curr_tile << " to " << curr_tile / 2 << std::endl;
+         curr_tile /= 2;
+         if (curr_tile == 0) {
+@@ -583,7 +608,13 @@ namespace Realm {
+         }
+       }
+     }
++    auto print_tile_stats = [&]() {
++      printf("TILE,op=preimage,path=ptrs,d1=%d,d2=%d,gpu_tiles=%zu,gpu_oom_backoffs=%zu,gpu_host_fallback=%d,gpu_input_rects=%zu,gpu_scratch_bytes=%zu\n",
++             N, N2, tile_count, oom_backoffs, host_fallback ? 1 : 0,
++             inst_space.num_rects, tile_size);
++    };
+     if (num_output == 0) {
++      print_tile_stats();
+       for (SparsityMap<N, T> it : sparsity_outputs) {
+         SparsityMapImpl<N, T> *impl = SparsityMapImpl<N, T>::lookup(it);
+         if (this->exclusive) {
+@@ -607,6 +638,7 @@ namespace Realm {
+                               return elem;
+                            });
+       } catch (arena_oom&) {
++        oom_backoffs++;
+         this->split_output(output_start, num_output, host_rect_buffers, rect_counts, buffer_arena);
+         host_fallback = true;
+       }
+@@ -627,5 +659,6 @@ namespace Realm {
+         }
+       }
+     }
+-  }
++      print_tile_stats();
++}
+ }
+diff --git a/tests/benchmark.cc b/tests/benchmark.cc
+index c87c7a2f2..49298de5e 100644
+--- a/tests/benchmark.cc
++++ b/tests/benchmark.cc
+@@ -585,8 +585,8 @@ public:
+     cpu_call.wait();
+     long long cpu_time = Clock::current_time_in_microseconds() - start_cpu;
+ 
+-    printf("RESULT,op=byfield,d1=%d,num_nodes=%d,buffer_size=%zu,gpu_us=%lld,cpu_us=%lld\n",
+-             N, num_nodes, buffer_size, gpu_time, cpu_time);
++    printf("RESULT,op=byfield,d1=%d,num_nodes=%d,num_colors=%d,num_pieces=%d,buffer_size=%zu,gpu_us=%lld,cpu_us=%lld\n",
++             N, num_nodes, num_colors, num_pieces, buffer_size, gpu_time, cpu_time);
+ 
+     return Event::merge_events({gpu_call, cpu_call});
+ 
+@@ -913,8 +913,8 @@ public:
+ 
+     cpu_call.wait();
+     long long cpu_us = Clock::current_time_in_microseconds() - start_cpu;
+-    printf("RESULT,op=image,d1=%d,d2=%d,num_nodes=%d,num_edges=%d,num_spaces=%d,sparse_factor=%d,buffer_size=%zu,gpu_us=%lld,cpu_us=%lld\n",
+-                 N1, N2, num_nodes, num_edges, num_spaces, sparse_factor, buffer_size, gpu_us, cpu_us);
++    printf("RESULT,op=image,d1=%d,d2=%d,num_nodes=%d,num_edges=%d,num_spaces=%d,num_pieces=%d,sparse_factor=%d,buffer_size=%zu,gpu_us=%lld,cpu_us=%lld\n",
++                 N1, N2, num_nodes, num_edges, num_spaces, num_pieces, sparse_factor, buffer_size, gpu_us, cpu_us);
+ 
+     return Event::merge_events({gpu_call, cpu_call});
+ 
+@@ -1253,8 +1253,8 @@ public:
+     cpu_call.wait();
+     long long cpu_us = Clock::current_time_in_microseconds() - start_cpu;
+ 
+-    printf("RESULT,op=image,d1=%d,d2=%d,num_nodes=%d,num_edges=%d,num_spaces=%d,sparse_factor=%d,buffer_size=%zu,gpu_us=%lld,cpu_us=%lld\n",
+-                 N1, N2, num_nodes, num_edges, num_spaces, sparse_factor, buffer_size, gpu_us, cpu_us);
++    printf("RESULT,op=irange,d1=%d,d2=%d,num_nodes=%d,num_edges=%d,num_spaces=%d,num_pieces=%d,rect_size=%d,sparse_factor=%d,buffer_size=%zu,gpu_us=%lld,cpu_us=%lld\n",
++                 N1, N2, num_nodes, num_edges, num_spaces, num_pieces, rect_size, sparse_factor, buffer_size, gpu_us, cpu_us);
+ 
+     return Event::merge_events({gpu_call, cpu_call});
+ 
+@@ -1586,8 +1586,8 @@ public:
+ 
+     cpu_call.wait();
+     long long cpu_us = Clock::current_time_in_microseconds() - cpu_start;
+-    printf("RESULT,op=preimage,d1=%d,d2=%d,num_nodes=%d,num_edges=%d,sparse_factor=%d,buffer_size=%zu,gpu_us=%lld,cpu_us=%lld\n",
+-       N1, N2, num_nodes, num_edges, sparse_factor, buffer_size, gpu_us, cpu_us);
++    printf("RESULT,op=preimage,d1=%d,d2=%d,num_nodes=%d,num_edges=%d,num_spaces=%d,num_pieces=%d,sparse_factor=%d,buffer_size=%zu,gpu_us=%lld,cpu_us=%lld\n",
++       N1, N2, num_nodes, num_edges, num_spaces, num_pieces, sparse_factor, buffer_size, gpu_us, cpu_us);
+     return Event::merge_events({gpu_call, cpu_call});
+ 
+   }
+@@ -1905,22 +1905,24 @@ public:
+                                                   Realm::ProfilingRequestSet());
+     warmup.wait();
+ 
++    long long gpu_start = Clock::current_time_in_microseconds();
+     Event gpu_call = is_nodes.create_subspaces_by_preimage(rect_field_data_gpu,
+                                                   targets,
+                                                   p_nodes,
+                                                   Realm::ProfilingRequestSet());
+ 
+-    if ( wait_on_events ) {
+-      gpu_call.wait();
+-    }
++    gpu_call.wait();
++    long long gpu_us = Clock::current_time_in_microseconds() - gpu_start;
++    long long cpu_start = Clock::current_time_in_microseconds();
+     Event cpu_call = is_nodes.create_subspaces_by_preimage(rect_field_data,
+                                                   targets,
+                                                   p_nodes_cpu,
+                                                   Realm::ProfilingRequestSet());
+ 
+-    if ( wait_on_events ) {
+-      cpu_call.wait();
+-    }
++    cpu_call.wait();
++    long long cpu_us = Clock::current_time_in_microseconds() - cpu_start;
++    printf("RESULT,op=prange,d1=%d,d2=%d,num_nodes=%d,num_edges=%d,num_spaces=%d,num_pieces=%d,rect_size=%d,sparse_factor=%d,buffer_size=%zu,gpu_us=%lld,cpu_us=%lld\n",
++       N1, N2, num_nodes, num_edges, num_spaces, num_pieces, rect_size, sparse_factor, buffer_size, gpu_us, cpu_us);
+ 
+     return Event::merge_events({gpu_call, cpu_call});
+   }

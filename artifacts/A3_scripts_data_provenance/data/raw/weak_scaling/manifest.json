@@ -1,0 +1,7 @@
+{
+  "created_at": "2026-07-16T18:53:33-0700",
+  "methodology": "median/min/max of 3 independent executions per app,p point",
+  "out_dir": "/pscratch/sd/r/rchanani/realm/.local/paper_3rep_20260716/interactive_weak_20260716_184000",
+  "raw_rows": 36,
+  "summary_rows": 12
+}

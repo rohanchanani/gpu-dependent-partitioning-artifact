@@ -1,0 +1,192 @@
+#include "LegionSolversMapper.hpp"
+
+#include <cassert> // for assert
+#include <cstdlib> // for std::getenv
+#include <set>     // for std::set
+
+#include <mappers/logging_wrapper.h> // for Legion::Mapping::LoggingWrapper
+
+#include "LibraryOptions.hpp"  // for LEGION_SOLVERS_MAPPER_ID,
+                               //     LEGION_SOLVERS_TASK_ID_ORIGIN
+#include "TaskBaseClasses.hpp" // for LEGION_SOLVERS_TASK_BLOCK_SIZE
+#include "TaskIDs.hpp"         // for NUM_META_TASK_IDS
+
+using LegionSolvers::BlockingShardingFunctor;
+using LegionSolvers::LegionSolversMapper;
+
+
+LegionSolversMapper::LegionSolversMapper(
+    Legion::Mapping::MapperRuntime *rt,
+    Legion::Machine machine,
+    Legion::Processor local_proc
+)
+    : Legion::Mapping::DefaultMapper(rt, machine, local_proc) {
+    // std::set<Legion::Processor> all_procs;
+    // Legion::Machine::get_machine().get_all_processors(all_procs);
+    // for (const Legion::Processor &proc : all_procs) {
+    //     const Legion::AddressSpace addr = proc.address_space();
+    //     const Legion::Processor::Kind kind = proc.kind();
+    //     address_spaces.push_back(addr);
+    //     if (kind == Legion::Processor::LOC_PROC) {
+    //         cpus[addr].push_back(proc);
+    //     } else if (kind == Legion::Processor::TOC_PROC) {
+    //         gpus[addr].push_back(proc);
+    //     }
+    // }
+    // std::sort(address_spaces.begin(), address_spaces.end());
+    // const auto last = std::unique(address_spaces.begin(),
+    // address_spaces.end()); address_spaces.erase(last, address_spaces.end());
+    // assert(address_spaces.size() == cpus.size());
+    // assert(address_spaces.size() == gpus.size());
+    // for (const auto &addr : address_spaces) {
+    //     std::sort(cpus[addr].begin(), cpus[addr].end());
+    //     std::sort(gpus[addr].begin(), gpus[addr].end());
+    // }
+}
+
+
+const char *LegionSolversMapper::get_mapper_name() const {
+    return "LegionSolversMapper";
+}
+
+
+void LegionSolversMapper::memoize_operation(
+    const Legion::Mapping::MapperContext,
+    const Legion::Mappable &,
+    const MemoizeInput &,
+    MemoizeOutput &output
+) {
+    const char *disable = std::getenv("LEGION_SOLVERS_DISABLE_MEMOIZE");
+    output.memoize =
+        disable == nullptr || disable[0] == '\0' || disable[0] == '0';
+}
+
+
+void LegionSolversMapper::slice_task(
+    const Legion::Mapping::MapperContext ctx,
+    const Legion::Task &task,
+    const SliceTaskInput &input,
+    SliceTaskOutput &output
+) {
+    Legion::Mapping::DefaultMapper::slice_task(ctx, task, input, output);
+}
+
+void LegionSolversMapper::map_task(
+    const Legion::Mapping::MapperContext ctx,
+    const Legion::Task &task,
+    const MapTaskInput &input,
+    MapTaskOutput &output
+) {
+    Legion::Mapping::DefaultMapper::map_task(ctx, task, input, output);
+
+    if (!is_task(task.task_id, CSR_MATVEC_TASK_BLOCK_ID)) {
+        return;
+    }
+    if (output.target_procs.empty() ||
+        (output.target_procs.front().kind() != Legion::Processor::TOC_PROC)) {
+        return;
+    }
+    if (task.regions.size() <= 2) {
+        return;
+    }
+
+    const Legion::Domain rowptr_domain = runtime->get_index_space_domain(
+        ctx, task.regions[2].region.get_index_space()
+    );
+    const std::size_t rowptr_bytes =
+        rowptr_domain.get_volume() * sizeof(long long);
+    const std::size_t cusparse_workspace_bytes =
+        ((rowptr_bytes + 63) / 64) + 4096;
+    const std::size_t pool_bytes =
+        rowptr_bytes + cusparse_workspace_bytes;
+
+    const Legion::Memory pool_memory = default_policy_select_target_memory(
+        ctx,
+        output.target_procs.front(),
+        task.regions[2],
+        Legion::MemoryConstraint(Legion::Memory::GPU_FB_MEM)
+    );
+    output.leaf_pool_bounds[pool_memory] = Legion::PoolBounds(pool_bytes, 16);
+}
+
+void LegionSolversMapper::default_policy_select_constraints(
+    Legion::Mapping::MapperContext ctx,
+    Legion::LayoutConstraintSet &constraints,
+    Legion::Memory target_memory,
+    const Legion::RegionRequirement &req
+) {
+    // GPUs require allocations to be 16-byte aligned.
+    std::vector<Legion::FieldID> fields;
+    default_policy_select_constraint_fields(ctx, req, fields);
+    for (auto field : fields) {
+        constraints.add_constraint(
+            Legion::AlignmentConstraint(field, LEGION_GE_EK, 16)
+        );
+    }
+    DefaultMapper::default_policy_select_constraints(
+        ctx, constraints, target_memory, req
+    );
+}
+
+
+void LegionSolversMapper::select_sharding_functor(
+    const Legion::Mapping::MapperContext,
+    const Legion::Task &,
+    const SelectShardingFunctorInput &,
+    SelectShardingFunctorOutput &output
+) {
+    output.chosen_functor = LEGION_SOLVERS_SHARDING_FUNCTOR_ID;
+}
+
+
+// Legion::Processor LegionSolversMapper::get_gpu(Legion::coord_t i) {
+//     while (true) {
+//         for (const auto &addr : address_spaces) {
+//             // cast to avoid signed/unsigned comparison
+//             if (i < static_cast<Legion::coord_t>(gpus[addr].size())) {
+//                 return gpus[addr][i];
+//             }
+//             i -= gpus[addr].size();
+//         }
+//     }
+// }
+
+
+bool LegionSolversMapper::is_task(
+    const Legion::TaskID task_id, const Legion::TaskID block_id
+) {
+    const Legion::TaskID block_origin =
+        LEGION_SOLVERS_TASK_ID_ORIGIN + NUM_META_TASK_IDS +
+        LEGION_SOLVERS_TASK_BLOCK_SIZE * block_id;
+    return (block_origin <= task_id) &&
+           (task_id < block_origin + LEGION_SOLVERS_TASK_BLOCK_SIZE);
+}
+
+
+void LegionSolvers::mapper_registration_callback(
+    Legion::Machine machine,
+    Legion::Runtime *rt,
+    const std::set<Legion::Processor> &local_procs
+) {
+    for (const Legion::Processor &proc : local_procs) {
+        rt->add_mapper(
+            LEGION_SOLVERS_MAPPER_ID,
+            new LegionSolversMapper(rt->get_mapper_runtime(), machine, proc),
+            proc
+        );
+    }
+}
+
+
+Legion::ShardID BlockingShardingFunctor::shard(
+    const Legion::DomainPoint &point,
+    const Legion::Domain &domain,
+    std::size_t total_shards
+) {
+    assert(domain.get_dim() == 1);
+    assert(domain.dense());
+    assert(domain.lo()[0] == 0);
+    const std::size_t points_per_shard =
+        (domain.get_volume() + total_shards - 1) / total_shards;
+    return static_cast<Legion::ShardID>(point[0] / points_per_shard);
+}

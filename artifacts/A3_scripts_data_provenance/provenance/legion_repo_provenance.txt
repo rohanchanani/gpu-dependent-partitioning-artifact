@@ -1,0 +1,24 @@
+path=/pscratch/sd/r/rchanani/legion
+26dc03e562c62b218a318b45a57d5f756afe3614
+gpudeppart
+?? build-pm-a100-ofi-cuda-release/
+---recent---
+commit 26dc03e562c62b218a318b45a57d5f756afe3614 (HEAD -> gpudeppart, origin/gpudeppart)
+Author: Rohan Chanani <rohanchanani@gmail.com>
+Date:   Thu Jul 2 20:21:55 2026 -0700
+
+    Prepping for perlmutter
+
+ .gitignore                          |  13 +++
+ bindings/regent/regent.h            |   2 +-
+ examples/circuit/circuit.cc         |  12 +-
+ language/examples/circuit_mapper.cc |   9 ++
+ language/examples/circuit_sparse.rg | 223 +++++++++++++++++++++++++++++++-----
+ language/regent.py                  |   8 ++
+ language/scripts/setup_env.py       |  35 ++++++
+ language/src/regent/gpu/cuda.t      |   9 ++
+ realm/src/realm/indexspace.h        |  37 ++++++
+ realm/src/realm/indexspace.inl      |  30 +++++
+ runtime/mappers/default_mapper.cc   |  15 ++-
+ 11 files changed, 351 insertions(+), 42 deletions(-)
+---diffstat---

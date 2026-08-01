@@ -1,0 +1,170 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+
+n=100000000
+it=2000
+rps=(0 1 2 5 10 25 50 100 500 1000 1500 2000)
+out_dir="$repo_dir/scratch/profiles/repart_initial_sweep_n100m"
+force=0
+extra_repart_args=()
+
+usage() {
+  cat <<USAGE
+usage: ./repart_initial_sweep [options]
+
+Runs the initial repartitioning-frequency experiment for GPU and CPU deppart
+and writes a wide CSV:
+
+  repartition_interval,gpu,cpu
+
+Values are throughput in CG iterations per second.
+
+Options:
+  -n N             application size (default: 100000000)
+  -it ITERS        CG iterations (default: 2000)
+  --rps LIST       comma-separated repartition intervals (default: 0,1,2,5,10,25,50,100,500,1000,1500,2000)
+  --out-dir D      output directory (default: scratch/profiles/repart_initial_sweep_n100m)
+  --force          rerun completed points instead of resuming from logs
+  --fsize MB       pass through to ./repart
+  --cpus N         pass through to ./repart
+  --build-dir D    pass through to ./repart
+  --help           show this help
+USAGE
+}
+
+split_csv() {
+  local input=$1
+  local -n output=$2
+  IFS=',' read -r -a output <<< "$input"
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -n) n=$2; shift 2 ;;
+    -it) it=$2; shift 2 ;;
+    --rps) split_csv "$2" rps; shift 2 ;;
+    --out-dir) out_dir=$2; shift 2 ;;
+    --force) force=1; shift ;;
+    --fsize) extra_repart_args+=(--fsize "$2"); shift 2 ;;
+    --cpus) extra_repart_args+=(--cpus "$2"); shift 2 ;;
+    --build-dir) extra_repart_args+=(--build-dir "$2"); shift 2 ;;
+    --help|-h) usage; exit 0 ;;
+    *) echo "unknown argument: $1" >&2; usage >&2; exit 2 ;;
+  esac
+done
+
+if [[ "$out_dir" != /* ]]; then
+  out_dir="$repo_dir/$out_dir"
+fi
+
+mkdir -p "$out_dir"
+wide_csv="$out_dir/throughput.csv"
+details_csv="$out_dir/throughput_details.csv"
+
+extract_iter_per_sec() {
+  local log=$1
+  if [[ ! -f "$log" ]]; then
+    return 1
+  fi
+
+  local line
+  line=$(grep 'THROUGHPUT' "$log" | tail -1 || true)
+  if [[ -z "$line" ]]; then
+    return 1
+  fi
+
+  local field
+  for field in $line; do
+    case "$field" in
+      iter_per_sec=*)
+        printf '%s\n' "${field#iter_per_sec=}"
+        return 0
+        ;;
+    esac
+  done
+  return 1
+}
+
+extract_field() {
+  local log=$1
+  local name=$2
+  local line
+  line=$(grep 'THROUGHPUT' "$log" | tail -1 || true)
+  if [[ -z "$line" ]]; then
+    return 1
+  fi
+
+  local field
+  for field in $line; do
+    case "$field" in
+      "$name"=*)
+        printf '%s\n' "${field#*=}"
+        return 0
+        ;;
+    esac
+  done
+  return 1
+}
+
+write_csvs() {
+  printf 'repartition_interval,gpu,cpu\n' > "$wide_csv"
+  printf 'mode,n,it,repartition_interval,seconds,iter_per_sec,mpoints_per_sec,gnnz_spmv_per_sec,profile,log\n' > "$details_csv"
+
+  local rp mode log profile gpu cpu seconds iter_per_sec mpoints_per_sec gnnz_spmv_per_sec
+  for rp in "${rps[@]}"; do
+    gpu=
+    cpu=
+    for mode in gpu cpu; do
+      log="$out_dir/${mode}_rp${rp}/${mode}.log"
+      profile="$out_dir/${mode}_rp${rp}/${mode}.gz"
+      iter_per_sec=$(extract_iter_per_sec "$log" || true)
+      if [[ "$mode" == gpu ]]; then
+        gpu=$iter_per_sec
+      else
+        cpu=$iter_per_sec
+      fi
+
+      if [[ -n "$iter_per_sec" ]]; then
+        seconds=$(extract_field "$log" seconds)
+        mpoints_per_sec=$(extract_field "$log" mpoints_per_sec)
+        gnnz_spmv_per_sec=$(extract_field "$log" gnnz_spmv_per_sec)
+        printf '%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n' \
+          "$mode" "$n" "$it" "$rp" "$seconds" "$iter_per_sec" \
+          "$mpoints_per_sec" "$gnnz_spmv_per_sec" "$profile" "$log" \
+          >> "$details_csv"
+      fi
+    done
+    printf '%s,%s,%s\n' "$rp" "$gpu" "$cpu" >> "$wide_csv"
+  done
+}
+
+run_one() {
+  local mode=$1
+  local rp=$2
+  local run_dir="$out_dir/${mode}_rp${rp}"
+  local log="$run_dir/${mode}.log"
+
+  mkdir -p "$run_dir"
+  if [[ $force -eq 0 ]] && extract_iter_per_sec "$log" >/dev/null; then
+    echo "SKIP mode=$mode rp=$rp existing throughput=$(extract_iter_per_sec "$log")"
+    return 0
+  fi
+
+  echo "RUN mode=$mode n=$n it=$it rp=$rp"
+  "$repo_dir/repart" "--$mode" -n "$n" -it "$it" -rp "$rp" \
+    --profile-dir "$run_dir" "${extra_repart_args[@]}"
+}
+
+for rp in "${rps[@]}"; do
+  run_one gpu "$rp"
+  write_csvs
+
+  run_one cpu "$rp"
+  write_csvs
+done
+
+write_csvs
+echo "CSV $wide_csv"
+echo "DETAILS $details_csv"

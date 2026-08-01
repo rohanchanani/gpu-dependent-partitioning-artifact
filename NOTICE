@@ -1,0 +1,11 @@
+GPU Dependent Partitioning Artifact
+
+This artifact package contains scripts, plotting code, data, documentation,
+source snapshots, and patches used for the accompanying SC/PAW-ATM submission.
+
+The top-level artifact scripts, plotting code, data files, and documentation
+are distributed under the Apache License, Version 2.0.
+
+Copied source snapshots and patches from Realm, Legion, and LegionSolvers remain
+subject to their original upstream project licenses. This package does not
+relicense third-party source code.

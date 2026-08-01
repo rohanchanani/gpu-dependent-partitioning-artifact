@@ -1,0 +1,139 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+
+n=100000000
+it=2000
+rp=50
+mode=gpu
+vp=4
+gpus=4
+profile_dir="$repo_dir/scratch/profiles/repart_cg"
+build_dir=
+cpus=${SLURM_CPUS_ON_NODE:-}
+fsize=
+extra_legion_args=()
+
+usage() {
+  cat <<USAGE
+usage: ./repart [options]
+
+Options:
+  -n N             application size (default: 100000000)
+  -it ITERS        CG iterations (default: 2000)
+  -rp ITERS        repartition interval, 0 disables repartitioning (default: 50)
+  --gpu            use GPU deppart (default)
+  --cpu            use CPU deppart
+  --profile-dir D  output directory for gpu.gz/cpu.gz and logs
+  --build-dir D    LegionSolvers build directory
+  --cpus N         CPUs for srun -c (default: allocation CPUs, then host default)
+  --fsize MB       Legion framebuffer size in MB (default: 35000 on Perlmutter, 15000 elsewhere)
+  --help           show this help
+
+For -rp 0, or -rp >= -it, this runner adds -lg:no_physical_tracing to avoid
+Legion physical trace replay reserving too many CSR matvec dynamic pools.
+USAGE
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -n) n=$2; shift 2 ;;
+    -it) it=$2; shift 2 ;;
+    -rp) rp=$2; shift 2 ;;
+    --gpu) mode=gpu; shift ;;
+    --cpu) mode=cpu; shift ;;
+    --profile-dir) profile_dir=$2; shift 2 ;;
+    --build-dir) build_dir=$2; shift 2 ;;
+    --cpus) cpus=$2; shift 2 ;;
+    --fsize) fsize=$2; shift 2 ;;
+    --help|-h) usage; exit 0 ;;
+    *) echo "unknown argument: $1" >&2; usage >&2; exit 2 ;;
+  esac
+done
+
+host=$(hostname)
+is_perlmutter=0
+if [[ "${NERSC_HOST:-}" == "perlmutter" || "$host" == nid* || "$host" == login* ]]; then
+  is_perlmutter=1
+fi
+
+if [[ -z "$cpus" ]]; then
+  if [[ $is_perlmutter -eq 1 ]]; then
+    cpus=128
+  else
+    cpus=40
+  fi
+fi
+
+if [[ -z "$fsize" ]]; then
+  if [[ $is_perlmutter -eq 1 ]]; then
+    fsize=35000
+  else
+    fsize=15000
+  fi
+fi
+
+if (( rp == 0 || rp >= it )); then
+  extra_legion_args+=(-lg:no_physical_tracing)
+fi
+
+if [[ -z "$build_dir" ]]; then
+  for candidate in \
+    "$repo_dir/scratch/LegionSolversBuild/pm_a100_ofi_cuda_release" \
+    "$repo_dir/scratch/LegionSolversBuild/p100_ibv_cuda_release" \
+    "$repo_dir/scratch/LegionSolversBuild/codex_p100_ibv_cuda_release"; do
+    if [[ -x "$candidate/Test06CSRSolveCG" ]]; then
+      build_dir=$candidate
+      break
+    fi
+  done
+fi
+
+if [[ -z "$build_dir" || ! -x "$build_dir/Test06CSRSolveCG" ]]; then
+  echo "could not find Test06CSRSolveCG; pass --build-dir" >&2
+  exit 1
+fi
+
+mkdir -p "$profile_dir"
+profile_file="$profile_dir/$mode.gz"
+log_file="$profile_dir/$mode.log"
+rm -f "$profile_file" "$log_file"
+
+if [[ "$mode" == gpu ]]; then
+  env_cmd=(env GPU=1)
+elif [[ "$mode" == cpu ]]; then
+  env_cmd=(env -u GPU)
+else
+  echo "invalid mode: $mode" >&2
+  exit 2
+fi
+
+if [[ -n "${SLURM_JOB_ID:-}" ]]; then
+  srun_cmd=(srun -N 1 -n 1 -c "$cpus")
+  if [[ $is_perlmutter -eq 1 ]]; then
+    srun_cmd+=(--gpus-per-task="$gpus" --gpu-bind=none)
+  fi
+else
+  if [[ $is_perlmutter -eq 1 ]]; then
+    echo "Perlmutter run needs an allocation; start salloc first" >&2
+    exit 1
+  fi
+  srun_cmd=(srun -N 1 -n 1 -c "$cpus" -p gpu --exclusive)
+fi
+
+cd "$build_dir"
+
+echo "RUN mode=$mode n=$n it=$it rp=$rp profile=$profile_file build_dir=$build_dir extra_legion_args=${extra_legion_args[*]:-none}" | tee "$log_file"
+"${env_cmd[@]}" "${srun_cmd[@]}" \
+  ./Test06CSRSolveCG \
+  -n "$n" -vp "$vp" -it "$it" -rp "$rp" -np \
+  -ll:gpu "$gpus" -ll:util "$gpus" \
+  -ll:csize 131072 -ll:fsize "$fsize" -ll:zsize 4096 \
+  "${extra_legion_args[@]}" \
+  -lg:prof 1 \
+  -lg:prof_logfile "$profile_file" \
+  2>&1 | tee -a "$log_file"
+
+echo "PROFILE $profile_file" | tee -a "$log_file"
+echo "LOG $log_file"
