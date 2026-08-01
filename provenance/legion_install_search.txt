@@ -1,0 +1,17 @@
+LEGION_INSTALL=/pscratch/sd/r/rchanani/lib/legion_pm_a100_ofi_cuda_release
+/pscratch/sd/r/rchanani/lib/legion_pm_a100_ofi_cuda_release/share/Legion/cmake/FindCUDAToolkit.cmake
+/pscratch/sd/r/rchanani/lib/legion_pm_a100_ofi_cuda_release/share/Legion/cmake/FindGASNet.cmake
+/pscratch/sd/r/rchanani/lib/legion_pm_a100_ofi_cuda_release/share/Legion/cmake/FindHIP.cmake
+/pscratch/sd/r/rchanani/lib/legion_pm_a100_ofi_cuda_release/share/Legion/cmake/FindHWLOC.cmake
+/pscratch/sd/r/rchanani/lib/legion_pm_a100_ofi_cuda_release/share/Legion/cmake/FindLIBDW.cmake
+/pscratch/sd/r/rchanani/lib/legion_pm_a100_ofi_cuda_release/share/Legion/cmake/FindLLVM.cmake
+/pscratch/sd/r/rchanani/lib/legion_pm_a100_ofi_cuda_release/share/Legion/cmake/LegionConfig.cmake
+/pscratch/sd/r/rchanani/lib/legion_pm_a100_ofi_cuda_release/share/Legion/cmake/LegionConfigCommon.cmake
+/pscratch/sd/r/rchanani/lib/legion_pm_a100_ofi_cuda_release/share/Legion/cmake/LegionConfig-version.cmake
+/pscratch/sd/r/rchanani/lib/legion_pm_a100_ofi_cuda_release/share/Legion/cmake/LegionTargets.cmake
+/pscratch/sd/r/rchanani/lib/legion_pm_a100_ofi_cuda_release/share/Legion/cmake/LegionTargets-relwithdebinfo.cmake
+SEARCH_REPOS
+/pscratch/sd/r/rchanani/legion
+/pscratch/sd/r/rchanani/LegionSolvers
+/pscratch/sd/r/rchanani/realm
+/pscratch/sd/r/rchanani/untouched/legion

@@ -1,0 +1,610 @@
+{
+  "buffers_linear_axis": [
+    1,
+    5,
+    10,
+    15,
+    20,
+    25,
+    30,
+    35,
+    40,
+    45,
+    50,
+    55,
+    60,
+    65,
+    70,
+    75,
+    80,
+    85,
+    90,
+    95,
+    100
+  ],
+  "buffers_log_axis": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    7,
+    10,
+    15,
+    20,
+    25,
+    30,
+    40,
+    50,
+    75,
+    100
+  ],
+  "created_at": "2026-07-20T17:25:19-0700",
+  "num_failures": 0,
+  "num_point_rows": 1080,
+  "num_raw_rows": 1080,
+  "num_shards": 4,
+  "num_summary_all_rows": 360,
+  "num_summary_linear_rows": 264,
+  "num_summary_log_rows": 360,
+  "out_dir": "/pscratch/sd/r/rchanani/realm/.local/tile_sweep_publication_block_random_interactive_56233373_20260720_162228",
+  "outputs": {
+    "failures": "/pscratch/sd/r/rchanani/realm/.local/tile_sweep_publication_block_random_interactive_56233373_20260720_162228/tile_sweep_publication_failures.csv",
+    "points": "/pscratch/sd/r/rchanani/realm/.local/tile_sweep_publication_block_random_interactive_56233373_20260720_162228/tile_sweep_publication_points.csv",
+    "raw": "/pscratch/sd/r/rchanani/realm/.local/tile_sweep_publication_block_random_interactive_56233373_20260720_162228/tile_sweep_publication_raw.csv",
+    "summary_all": "/pscratch/sd/r/rchanani/realm/.local/tile_sweep_publication_block_random_interactive_56233373_20260720_162228/tile_sweep_publication_summary_all_buffers.csv",
+    "summary_linear_axis": "/pscratch/sd/r/rchanani/realm/.local/tile_sweep_publication_block_random_interactive_56233373_20260720_162228/tile_sweep_publication_summary_linear_axis.csv",
+    "summary_log_axis": "/pscratch/sd/r/rchanani/realm/.local/tile_sweep_publication_block_random_interactive_56233373_20260720_162228/tile_sweep_publication_summary_log_axis.csv"
+  },
+  "shard_manifests": [
+    {
+      "binary": "/pscratch/sd/r/rchanani/realm/build_pm_deppart/tests/benchmark",
+      "config": {
+        "base_flags": [
+          "-ll:gpu",
+          "1",
+          "-ll:cpu",
+          "1",
+          "-ll:fsize",
+          "8192",
+          "-dp:workers",
+          "1",
+          "-dp:hpool",
+          "256",
+          "-nocheck",
+          "-block_random",
+          "-block_volume",
+          "1024"
+        ],
+        "block_volume": 1024,
+        "buffer_set": "log",
+        "buffers_all": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          7,
+          10,
+          15,
+          20,
+          25,
+          30,
+          40,
+          50,
+          75,
+          100
+        ],
+        "buffers_linear_axis": [
+          1,
+          5,
+          10,
+          15,
+          20,
+          25,
+          30,
+          35,
+          40,
+          45,
+          50,
+          55,
+          60,
+          65,
+          70,
+          75,
+          80,
+          85,
+          90,
+          95,
+          100
+        ],
+        "buffers_log_axis": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          7,
+          10,
+          15,
+          20,
+          25,
+          30,
+          40,
+          50,
+          75,
+          100
+        ],
+        "densities": [
+          [
+            "dense",
+            "1"
+          ],
+          [
+            "sparse",
+            "5"
+          ]
+        ],
+        "dims": [
+          [
+            "1d",
+            "1",
+            "1",
+            "1000000",
+            "1000000"
+          ],
+          [
+            "2d",
+            "2",
+            "2",
+            "1000",
+            "1000"
+          ],
+          [
+            "3d",
+            "3",
+            "3",
+            "100",
+            "100"
+          ]
+        ],
+        "field_mode": "block_random",
+        "ops": [
+          "image",
+          "preimage"
+        ],
+        "repeats": 3,
+        "source_filter": "all"
+      },
+      "created_at": "2026-07-20T17:18:09-0700",
+      "host": "nid001157",
+      "num_failures": 0,
+      "num_point_rows": 270,
+      "num_raw_rows": 270,
+      "policy": {
+        "cpu_source": "normal run, use cpu_us",
+        "gpu_source": "-dp:noisectopt run, use gpu_us",
+        "parallelism": "one serial shard per full Perlmutter GPU node",
+        "tile_join": "last TILE row before RESULT; tile counters retained on gpu_source rows"
+      },
+      "repo": "/pscratch/sd/r/rchanani/realm",
+      "selected_task_count": 270,
+      "shard_id": 0,
+      "timeout_s": 1800,
+      "total_shards": 4,
+      "total_task_count": 1080
+    },
+    {
+      "binary": "/pscratch/sd/r/rchanani/realm/build_pm_deppart/tests/benchmark",
+      "config": {
+        "base_flags": [
+          "-ll:gpu",
+          "1",
+          "-ll:cpu",
+          "1",
+          "-ll:fsize",
+          "8192",
+          "-dp:workers",
+          "1",
+          "-dp:hpool",
+          "256",
+          "-nocheck",
+          "-block_random",
+          "-block_volume",
+          "1024"
+        ],
+        "block_volume": 1024,
+        "buffer_set": "log",
+        "buffers_all": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          7,
+          10,
+          15,
+          20,
+          25,
+          30,
+          40,
+          50,
+          75,
+          100
+        ],
+        "buffers_linear_axis": [
+          1,
+          5,
+          10,
+          15,
+          20,
+          25,
+          30,
+          35,
+          40,
+          45,
+          50,
+          55,
+          60,
+          65,
+          70,
+          75,
+          80,
+          85,
+          90,
+          95,
+          100
+        ],
+        "buffers_log_axis": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          7,
+          10,
+          15,
+          20,
+          25,
+          30,
+          40,
+          50,
+          75,
+          100
+        ],
+        "densities": [
+          [
+            "dense",
+            "1"
+          ],
+          [
+            "sparse",
+            "5"
+          ]
+        ],
+        "dims": [
+          [
+            "1d",
+            "1",
+            "1",
+            "1000000",
+            "1000000"
+          ],
+          [
+            "2d",
+            "2",
+            "2",
+            "1000",
+            "1000"
+          ],
+          [
+            "3d",
+            "3",
+            "3",
+            "100",
+            "100"
+          ]
+        ],
+        "field_mode": "block_random",
+        "ops": [
+          "image",
+          "preimage"
+        ],
+        "repeats": 3,
+        "source_filter": "all"
+      },
+      "created_at": "2026-07-20T16:56:10-0700",
+      "host": "nid001321",
+      "num_failures": 0,
+      "num_point_rows": 270,
+      "num_raw_rows": 270,
+      "policy": {
+        "cpu_source": "normal run, use cpu_us",
+        "gpu_source": "-dp:noisectopt run, use gpu_us",
+        "parallelism": "one serial shard per full Perlmutter GPU node",
+        "tile_join": "last TILE row before RESULT; tile counters retained on gpu_source rows"
+      },
+      "repo": "/pscratch/sd/r/rchanani/realm",
+      "selected_task_count": 270,
+      "shard_id": 1,
+      "timeout_s": 1800,
+      "total_shards": 4,
+      "total_task_count": 1080
+    },
+    {
+      "binary": "/pscratch/sd/r/rchanani/realm/build_pm_deppart/tests/benchmark",
+      "config": {
+        "base_flags": [
+          "-ll:gpu",
+          "1",
+          "-ll:cpu",
+          "1",
+          "-ll:fsize",
+          "8192",
+          "-dp:workers",
+          "1",
+          "-dp:hpool",
+          "256",
+          "-nocheck",
+          "-block_random",
+          "-block_volume",
+          "1024"
+        ],
+        "block_volume": 1024,
+        "buffer_set": "log",
+        "buffers_all": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          7,
+          10,
+          15,
+          20,
+          25,
+          30,
+          40,
+          50,
+          75,
+          100
+        ],
+        "buffers_linear_axis": [
+          1,
+          5,
+          10,
+          15,
+          20,
+          25,
+          30,
+          35,
+          40,
+          45,
+          50,
+          55,
+          60,
+          65,
+          70,
+          75,
+          80,
+          85,
+          90,
+          95,
+          100
+        ],
+        "buffers_log_axis": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          7,
+          10,
+          15,
+          20,
+          25,
+          30,
+          40,
+          50,
+          75,
+          100
+        ],
+        "densities": [
+          [
+            "dense",
+            "1"
+          ],
+          [
+            "sparse",
+            "5"
+          ]
+        ],
+        "dims": [
+          [
+            "1d",
+            "1",
+            "1",
+            "1000000",
+            "1000000"
+          ],
+          [
+            "2d",
+            "2",
+            "2",
+            "1000",
+            "1000"
+          ],
+          [
+            "3d",
+            "3",
+            "3",
+            "100",
+            "100"
+          ]
+        ],
+        "field_mode": "block_random",
+        "ops": [
+          "image",
+          "preimage"
+        ],
+        "repeats": 3,
+        "source_filter": "all"
+      },
+      "created_at": "2026-07-20T17:25:19-0700",
+      "host": "nid001293",
+      "num_failures": 0,
+      "num_point_rows": 270,
+      "num_raw_rows": 270,
+      "policy": {
+        "cpu_source": "normal run, use cpu_us",
+        "gpu_source": "-dp:noisectopt run, use gpu_us",
+        "parallelism": "one serial shard per full Perlmutter GPU node",
+        "tile_join": "last TILE row before RESULT; tile counters retained on gpu_source rows"
+      },
+      "repo": "/pscratch/sd/r/rchanani/realm",
+      "selected_task_count": 270,
+      "shard_id": 2,
+      "timeout_s": 1800,
+      "total_shards": 4,
+      "total_task_count": 1080
+    },
+    {
+      "binary": "/pscratch/sd/r/rchanani/realm/build_pm_deppart/tests/benchmark",
+      "config": {
+        "base_flags": [
+          "-ll:gpu",
+          "1",
+          "-ll:cpu",
+          "1",
+          "-ll:fsize",
+          "8192",
+          "-dp:workers",
+          "1",
+          "-dp:hpool",
+          "256",
+          "-nocheck",
+          "-block_random",
+          "-block_volume",
+          "1024"
+        ],
+        "block_volume": 1024,
+        "buffer_set": "log",
+        "buffers_all": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          7,
+          10,
+          15,
+          20,
+          25,
+          30,
+          40,
+          50,
+          75,
+          100
+        ],
+        "buffers_linear_axis": [
+          1,
+          5,
+          10,
+          15,
+          20,
+          25,
+          30,
+          35,
+          40,
+          45,
+          50,
+          55,
+          60,
+          65,
+          70,
+          75,
+          80,
+          85,
+          90,
+          95,
+          100
+        ],
+        "buffers_log_axis": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          7,
+          10,
+          15,
+          20,
+          25,
+          30,
+          40,
+          50,
+          75,
+          100
+        ],
+        "densities": [
+          [
+            "dense",
+            "1"
+          ],
+          [
+            "sparse",
+            "5"
+          ]
+        ],
+        "dims": [
+          [
+            "1d",
+            "1",
+            "1",
+            "1000000",
+            "1000000"
+          ],
+          [
+            "2d",
+            "2",
+            "2",
+            "1000",
+            "1000"
+          ],
+          [
+            "3d",
+            "3",
+            "3",
+            "100",
+            "100"
+          ]
+        ],
+        "field_mode": "block_random",
+        "ops": [
+          "image",
+          "preimage"
+        ],
+        "repeats": 3,
+        "source_filter": "all"
+      },
+      "created_at": "2026-07-20T16:57:56-0700",
+      "host": "nid001197",
+      "num_failures": 0,
+      "num_point_rows": 270,
+      "num_raw_rows": 270,
+      "policy": {
+        "cpu_source": "normal run, use cpu_us",
+        "gpu_source": "-dp:noisectopt run, use gpu_us",
+        "parallelism": "one serial shard per full Perlmutter GPU node",
+        "tile_join": "last TILE row before RESULT; tile counters retained on gpu_source rows"
+      },
+      "repo": "/pscratch/sd/r/rchanani/realm",
+      "selected_task_count": 270,
+      "shard_id": 3,
+      "timeout_s": 1800,
+      "total_shards": 4,
+      "total_task_count": 1080
+    }
+  ],
+  "shards_dir": "/pscratch/sd/r/rchanani/realm/.local/tile_sweep_publication_block_random_interactive_56233373_20260720_162228/shards"
+}

@@ -1,0 +1,10 @@
+diff --git a/run_repart_initial_sweep.sbatch b/run_repart_initial_sweep.sbatch
+index f84250b..c6a5fa4 100644
+--- a/run_repart_initial_sweep.sbatch
++++ b/run_repart_initial_sweep.sbatch
+@@ -26,4 +26,4 @@ module load craype-accel-nvidia80
+ module load craype-network-ofi
+ 
+ cmake --build scratch/LegionSolversBuild/pm_a100_ofi_cuda_release -j --target Test06CSRSolveCG
+-./repart_initial_sweep
++./repart_initial_sweep --rps 0,1,2,5,10,25,50,100,500,1000,1500,2000 --out-dir scratch/profiles/repart_initial_sweep_n100m

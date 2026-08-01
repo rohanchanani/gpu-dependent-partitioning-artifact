@@ -1,0 +1,106 @@
+# Perlmutter provenance
+2026-07-11T13:36:28-07:00
+
+## Realm repo
+path=/pscratch/sd/r/rchanani/realm
+9b026a46941f95a3115d8b2fb4dd43d2ca532323
+review-tiling
+ M src/realm/deppart/byfield_gpu_impl.hpp
+ M src/realm/deppart/image_gpu_impl.hpp
+ M src/realm/deppart/preimage_gpu_impl.hpp
+ M tests/benchmark.cc
+?? .local/__pycache__/
+?? .local/latest_hpool256_outdir
+?? .local/latest_sparsity_calibration_outdir
+?? .local/latest_tile_count_smoke_log
+?? .local/latest_tile_sweep_dense_axes_outdir
+?? .local/latest_tile_sweep_outdir
+?? .local/microbench_debug/
+?? .local/microbench_results/
+?? .local/microbench_results_hpool256_20260711_092311/
+?? .local/patch_tile_counts.py
+?? .local/run_microbenchmarks.py
+?? .local/saved/weak_scale_deppart_apps_perlmutter.sh
+?? .local/sparsity_calibration.py
+?? .local/sparsity_calibration_20260711_095643/
+?? .local/sparsity_calibration_20260711_095737/
+?? .local/submit_microbench.sbatch
+?? .local/tile_count_smoke_20260711_101946.log
+?? .local/tile_sweep.py
+?? .local/tile_sweep_20260711_103810/
+?? .local/tile_sweep_dense_axes.py
+?? .local/tile_sweep_dense_axes_20260711_122213/
+?? .local/tile_sweep_dense_axes_parallel.py
+?? .local/tile_sweep_dense_axes_parallel_20260711_124538/
+?? build-pm-a100-ofi-cuda-release/
+?? build_pm_deppart/
+--- submodules ---
+--- recent commit ---
+commit 9b026a46941f95a3115d8b2fb4dd43d2ca532323 (HEAD -> review-tiling, origin/review-tiling)
+Author: Rohan Chanani <rohanchanani@gmail.com>
+Date:   Thu Jul 2 19:47:10 2026 -0700
+
+    update gitignore
+
+ .gitignore | 1 +
+ 1 file changed, 1 insertion(+)
+--- diff stat ---
+ src/realm/deppart/byfield_gpu_impl.hpp  |  5 ++--
+ src/realm/deppart/image_gpu_impl.hpp    | 35 +++++++++++++++++++++--
+ src/realm/deppart/preimage_gpu_impl.hpp | 49 +++++++++++++++++++++++++++------
+ tests/benchmark.cc                      | 30 ++++++++++----------
+ 4 files changed, 93 insertions(+), 26 deletions(-)
+--- build cache highlights ---
+CMAKE_BUILD_TYPE:STRING=Release
+CMAKE_CUDA_ARCHITECTURES:UNINITIALIZED=80
+CMAKE_CUDA_COMPILER:STRING=/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9/bin/nvcc
+CMAKE_CUDA_FLAGS:STRING=
+CMAKE_CUDA_FLAGS_DEBUG:STRING=-g
+CMAKE_CUDA_FLAGS_MINSIZEREL:STRING=-O1 -DNDEBUG
+CMAKE_CUDA_FLAGS_RELEASE:STRING=-O3 -DNDEBUG
+CMAKE_CUDA_FLAGS_RELWITHDEBINFO:STRING=-O2 -g -DNDEBUG
+CMAKE_CXX_COMPILER:STRING=/opt/cray/pe/craype/2.7.35/bin/CC
+CMAKE_CXX_FLAGS:STRING=
+CMAKE_CXX_FLAGS_DEBUG:STRING=-g
+CMAKE_CXX_FLAGS_MINSIZEREL:STRING=-Os -DNDEBUG
+CMAKE_CXX_FLAGS_RELEASE:STRING=-O3 -DNDEBUG
+CMAKE_CXX_FLAGS_RELWITHDEBINFO:STRING=-O2 -g -DNDEBUG
+CMAKE_C_COMPILER:STRING=/opt/cray/pe/craype/2.7.35/bin/cc
+REALM_USE_CUDA:UNINITIALIZED=ON
+CMAKE_CUDA_FLAGS-ADVANCED:INTERNAL=1
+CMAKE_CUDA_FLAGS_DEBUG-ADVANCED:INTERNAL=1
+CMAKE_CUDA_FLAGS_MINSIZEREL-ADVANCED:INTERNAL=1
+CMAKE_CUDA_FLAGS_RELEASE-ADVANCED:INTERNAL=1
+CMAKE_CUDA_FLAGS_RELWITHDEBINFO-ADVANCED:INTERNAL=1
+CMAKE_CXX_FLAGS-ADVANCED:INTERNAL=1
+CMAKE_CXX_FLAGS_DEBUG-ADVANCED:INTERNAL=1
+CMAKE_CXX_FLAGS_MINSIZEREL-ADVANCED:INTERNAL=1
+CMAKE_CXX_FLAGS_RELEASE-ADVANCED:INTERNAL=1
+CMAKE_CXX_FLAGS_RELWITHDEBINFO-ADVANCED:INTERNAL=1
+
+## LegionSolvers repo
+path=/pscratch/sd/r/rchanani/LegionSolvers
+eea439021fca3714134bdc782a38ccddec77d765
+main
+ M run_repart_initial_sweep.sbatch
+?? repart_sweep-55444654.err
+?? repart_sweep-55444654.out
+?? repart_sweep-55452765.err
+?? repart_sweep-55452765.out
+--- submodules ---
+--- recent commit ---
+commit eea439021fca3714134bdc782a38ccddec77d765 (HEAD -> main, origin/main, origin/HEAD)
+Author: Rohan Chanani <rohanchanani@gmail.com>
+Date:   Fri Jul 3 15:46:45 2026 -0700
+
+    Fix late repartition sweep paths
+
+ repart               | 6 +++---
+ repart_initial_sweep | 8 ++++++--
+ 2 files changed, 9 insertions(+), 5 deletions(-)
+--- diff stat ---
+ run_repart_initial_sweep.sbatch | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+--- files around runner ---
+-rwxrwx--- 1 rchanani rchanani 4337 Jul  3 15:52 repart_initial_sweep
+-rw-rw---- 1 rchanani rchanani  890 Jul  3 15:36 run_repart_initial_sweep.sbatch
