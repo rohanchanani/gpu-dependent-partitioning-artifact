@@ -6,10 +6,13 @@ computational artifacts.
 All three artifacts are archived in one public repository/archive:
 
 - Repository: https://github.com/rohanchanani/gpu-dependent-partitioning-artifact
-- Existing DOI: https://doi.org/10.5281/zenodo.21741212
+- Three-artifact release tag: `v2.2-sc26-ad-three-artifacts`
+- DOI: fill in after publishing the `v2.2-sc26-ad-three-artifacts` release on
+  GitHub/Zenodo.
 
-If a new Zenodo release is minted for this three-artifact layout, replace the
-DOI above with the new version DOI.
+The older DOI `https://doi.org/10.5281/zenodo.21741212` corresponds to the
+earlier one-artifact packaging and should not be used for the final
+three-artifact AD unless Zenodo explicitly aliases it to the new version.
 
 ## Artifact IDs
 
@@ -85,16 +88,15 @@ Related paper elements:
 
 ```latex
 \begin{description}
-\item[$A_1$] https://doi.org/10.5281/zenodo.21741212 % Modified Legion/Realm runtime
-\item[$A_2$] https://doi.org/10.5281/zenodo.21741212 % Modified LegionSolvers repartitioning app
-\item[$A_3$] https://doi.org/10.5281/zenodo.21741212 % Scripts, data, and provenance
+\item[$A_1$] TODO_NEW_THREE_ARTIFACT_DOI % Modified Legion/Realm runtime
+\item[$A_2$] TODO_NEW_THREE_ARTIFACT_DOI % Modified LegionSolvers repartitioning app
+\item[$A_3$] TODO_NEW_THREE_ARTIFACT_DOI % Scripts, data, and provenance
 \end{description}
 ```
 
 The AD template allows multiple computational artifacts to be archived under a
-single DOI. If the final publication flow creates a new DOI for the
-three-artifact layout, use that DOI for all three entries unless the artifacts
-are split into separate archives.
+single DOI. Use the DOI minted for the `v2.2-sc26-ad-three-artifacts` release
+for all three entries unless the artifacts are split into separate archives.
 
 ## Artifact Table Sketch
 

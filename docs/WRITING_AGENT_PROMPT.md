@@ -18,10 +18,11 @@ Use three computational artifact IDs:
 
 All three artifacts are currently archived under:
 
-https://doi.org/10.5281/zenodo.21741212
+TODO_NEW_THREE_ARTIFACT_DOI
 
-If the user supplies a newer DOI for this three-artifact layout, use that newer
-DOI instead.
+Use the DOI minted for the `v2.2-sc26-ad-three-artifacts` release. Do not use
+the older one-artifact DOI unless the user explicitly says Zenodo aliased it to
+the new three-artifact release.
 
 Your task:
 

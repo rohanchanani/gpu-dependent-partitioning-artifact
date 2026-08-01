@@ -9,8 +9,9 @@ multiple computational artifacts to be archived under a single DOI.
 Current public repository:
 https://github.com/rohanchanani/gpu-dependent-partitioning-artifact
 
-Current archived DOI:
-https://doi.org/10.5281/zenodo.21741212
+The three-artifact release should be archived from tag
+`v2.2-sc26-ad-three-artifacts`. Fill in the minted Zenodo DOI in the AD after
+publishing that release.
 
 ## Artifacts
 
