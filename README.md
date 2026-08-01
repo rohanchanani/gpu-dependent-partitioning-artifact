@@ -5,6 +5,8 @@ GPU-accelerated Realm dependent partitioning. It is intended to be archived as a
 versioned public artifact, ideally through a tagged GitHub release plus Zenodo
 DOI.
 
+Archived DOI: https://doi.org/10.5281/zenodo.21741212
+
 The package contains the data used for the paper's three evaluation sections:
 
 - microbenchmarks of `image` and `preimage`;
@@ -66,7 +68,10 @@ are distributed under the Apache License, Version 2.0. Copied source snapshots
 and patches from Realm, Legion, and LegionSolvers remain subject to their
 original upstream project licenses.
 
-## Notes Before Publishing
+## Publication
 
-Replace any placeholder DOI text in AD-facing material after the Zenodo archive
-is created.
+GitHub repository:
+https://github.com/rohanchanani/gpu-dependent-partitioning-artifact
+
+Zenodo DOI:
+https://doi.org/10.5281/zenodo.21741212

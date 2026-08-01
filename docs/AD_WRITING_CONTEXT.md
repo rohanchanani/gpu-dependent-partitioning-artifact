@@ -215,9 +215,10 @@ Use `templates/sc26-artifact-description.zip` for the template source.
 
 ## Publication Notes
 
-The artifact should be published as a tagged GitHub release archived by Zenodo
-to mint a DOI. The DOI is not yet present in this local bundle and must be
-filled in after publication.
+The artifact is published as a tagged GitHub release archived by Zenodo.
+
+- GitHub: https://github.com/rohanchanani/gpu-dependent-partitioning-artifact
+- DOI: https://doi.org/10.5281/zenodo.21741212
 
 Do not cite local paths like `/pscratch` or `~/Downloads` as artifact locations
 in the final AD. They are provenance only.

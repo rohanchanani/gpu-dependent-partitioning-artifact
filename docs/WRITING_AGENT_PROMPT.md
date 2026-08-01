@@ -16,9 +16,9 @@ Your task:
 2. Do not invent methodology details. Use the factual context in
    `docs/AD_WRITING_CONTEXT.md`, `docs/ARTIFACT_FILE_MAP.md`, the manifests,
    and the provenance files.
-3. Use one computational artifact unless the supplied public DOI information
-   explicitly splits the artifact into multiple DOIs.
-4. If the DOI is not supplied, leave a clearly marked `TODO_DOI` placeholder.
+3. Use one computational artifact with DOI
+   `https://doi.org/10.5281/zenodo.21741212` unless the supplied public DOI
+   information explicitly splits the artifact into multiple DOIs.
 5. Tie the artifact to the paper's actual contribution labels. If the paper's
    contribution labels differ from the suggested context, follow the paper.
 6. State that final plotted points use the median of three independent

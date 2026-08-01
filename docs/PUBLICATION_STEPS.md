@@ -1,5 +1,10 @@
 # Publication Steps
 
+Published artifact:
+
+- GitHub: https://github.com/rohanchanani/gpu-dependent-partitioning-artifact
+- DOI: https://doi.org/10.5281/zenodo.21741212
+
 These are the exact external steps needed after the local package is reviewed.
 
 ## 1. Confirm License
